@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MICRO-SHOWS | Cloud Cinema</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #141414;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .netflix-gradient {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
+        }
+
+        .movie-card:hover .play-overlay {
+            opacity: 1;
+        }
+
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #e50914;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <!-- Auth Loading Overlay -->
+        <div id="loading-screen" class="fixed inset-0 z-[100] bg-[#141414] flex items-center justify-center">
+            <div class="flex flex-col items-center gap-4">
+                <div class="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Connecting to Cloud</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="fixed top-0 w-full z-40 netflix-gradient px-6 py-5 flex items-center justify-between backdrop-blur-sm transition-all duration-300" id="navbar">
+            <h1 class="text-red-600 text-2xl font-black tracking-tighter uppercase cursor-pointer hover:opacity-80 transition-all" onclick="showView('home')">
+                MICRO-SHOWS
+            </h1>
+
+            <div class="flex items-center gap-6 text-gray-300">
+                <i class="fa-solid fa-search cursor-pointer hover:text-white"></i>
+                <i class="fa-solid fa-upload cursor-pointer hover:text-white transition" onclick="tryAdminAccess()"></i>
+                <i class="fa-solid fa-right-from-bracket cursor-pointer hover:text-white" onclick="handleLogout()"></i>
+                <div id="user-avatar" class="w-8 h-8 bg-red-600 rounded flex items-center justify-center shadow-lg text-xs font-bold uppercase">U</div>
+            </div>
+        </nav>
+
+        <!-- Main Views Container -->
+        <main class="pt-24 min-h-screen">
+            <!-- Home View -->
+            <div id="view-home" class="px-6 md:px-12 pb-20">
+                <h2 class="text-2xl font-black mb-8 uppercase italic tracking-widest text-red-600 border-b border-red-600/20 pb-2 inline-block">Cloud Library</h2>
+                <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                    <!-- Dynamic Movies -->
+                </div>
+            </div>
+
+            <!-- Admin View (Hidden by default) -->
+            <div id="view-admin" class="hidden max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 pb-20">
+                <div class="bg-[#181818] p-8 rounded-3xl border border-white/5 h-fit shadow-2xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-2xl font-black italic uppercase text-red-600 tracking-tighter">Studio Control</h2>
+                        <button onclick="showView('home')" class="text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    <div class="space-y-6">
+                        <input id="form-title" class="w-full bg-[#252525] p-4 rounded-xl outline-none focus:ring-1 focus:ring-red-600 transition-all" placeholder="Movie Title">
+                        <button onclick="handleAiFill()" id="ai-fill-btn" class="text-xs uppercase font-black text-gray-500 hover:text-red-500 transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-sparkles"></i> Auto-fill Metadata with AI
+                        </button>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="bg-[#252525] p-6 rounded-xl text-center cursor-pointer border border-dashed border-white/10 hover:border-red-600 transition-all">
+                                <i class="fa-solid fa-video mb-1 block"></i> <span class="text-[10px] font-black uppercase">Video URL</span>
+                                <input type="text" id="form-video" class="w-full bg-transparent text-[10px] outline-none text-center mt-2 border-t border-white/5 pt-2" placeholder="Paste .mp4 link">
+                            </label>
+                            <label class="bg-[#252525] p-6 rounded-xl text-center cursor-pointer border border-dashed border-white/10 hover:border-red-600 transition-all">
+                                <i class="fa-solid fa-image mb-1 block"></i> <span class="text-[10px] font-black uppercase">Poster URL</span>
+                                <input type="text" id="form-thumb" class="w-full bg-transparent text-[10px] outline-none text-center mt-2 border-t border-white/5 pt-2" placeholder="Paste image link">
+                            </label>
+                        </div>
+                        <textarea id="form-desc" class="w-full bg-[#252525] p-4 rounded-xl h-32 outline-none focus:ring-1 focus:ring-red-600 transition-all resize-none" placeholder="Description..."></textarea>
+                        <button onclick="submitMovie()" class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg">Upload to Cloud</button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <h2 class="text-2xl font-black italic uppercase mb-8 text-white tracking-tighter">Manage Content</h2>
+                    <div id="admin-movies-list" class="space-y-3">
+                        <!-- Admin list -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Player Modal -->
+        <div id="player-modal" class="hidden fixed inset-0 bg-black/98 z-50 flex justify-center py-10 px-4 backdrop-blur-md overflow-y-auto">
+            <div class="bg-[#111] w-full max-w-5xl rounded-2xl overflow-hidden relative border border-white/5 h-fit mb-10 shadow-2xl">
+                <button class="absolute top-4 right-4 z-50 p-3 bg-black/50 hover:bg-red-600 rounded-full transition-all" onclick="closePlayer()">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+                <video id="main-video" controls class="w-full aspect-video bg-black"></video>
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 id="player-title" class="text-4xl font-black italic tracking-tighter uppercase">Title</h1>
+                        <button onclick="handleAiNarrator()" id="narrator-btn" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-full flex items-center gap-2 font-bold transition-all disabled:opacity-50">
+                            <i class="fa-solid fa-sparkles" id="narrator-icon"></i> AI NARRATOR
+                        </button>
+                    </div>
+                    <div id="narration-box" class="hidden mb-6 p-5 bg-red-600/5 border-l-4 border-red-600 rounded-r-xl italic text-lg leading-relaxed"></div>
+                    <p id="player-desc" class="text-gray-400 italic border-l border-white/10 pl-4"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Auth Modal -->
+        <div id="auth-modal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-[#181818] p-8 rounded-3xl border border-white/10 w-full max-w-sm shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
+                        <i class="fa-solid fa-lock text-red-600"></i> Authorized Entry
+                    </h2>
+                    <i class="fa-solid fa-xmark cursor-pointer text-gray-500 hover:text-white" onclick="closeAuthModal()"></i>
+                </div>
+                <div class="space-y-4">
+                    <input type="password" id="admin-pass-input" class="w-full bg-[#252525] p-4 rounded-xl outline-none border border-transparent focus:border-red-600 transition-all" placeholder="Studio Key (Shhhhh...)">
+                    <button onclick="verifyAdminPass()" class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-xl font-black uppercase tracking-widest transition-all">
+                        Access Studio
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Page -->
+        <div id="login-page" class="hidden fixed inset-0 bg-[#141414] z-[80] flex items-center justify-center p-6">
+            <div class="bg-[#181818]/80 backdrop-blur-xl p-10 rounded-3xl w-full max-w-md border border-white/10 shadow-2xl text-center">
+                <h1 class="text-4xl font-black text-red-600 tracking-tighter mb-2 italic">MICRO-SHOWS</h1>
+                <p class="text-gray-400 font-medium mb-10">Cloud streaming for your local library.</p>
+                <div class="space-y-4">
+                    <button onclick="handleLogin()" class="w-full bg-white text-black py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-200 transition">
+                        <i class="fa-brands fa-google"></i> Continue with Google
+                    </button>
+                    <button onclick="handleLogin()" class="w-full bg-[#2f2f2f] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-[#3f3f3f] transition">
+                        <i class="fa-brands fa-github"></i> Continue with GitHub
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Constants - API Key is managed by the environment
+        const apiKey = ""; 
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'micro-shows-v1';
+        const ADMIN_PASS = "RISHI@21";
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State
+        let currentUser = null;
+        let movies = [];
+        let isAdminAuthenticated = false;
+        let activeMovie = null;
+
+        // --- Core Functions ---
+
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth error", err);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            document.getElementById('loading-screen').classList.add('hidden');
+            
+            if (!user) {
+                document.getElementById('login-page').classList.remove('hidden');
+            } else {
+                document.getElementById('login-page').classList.add('hidden');
+                document.getElementById('user-avatar').innerText = user.uid.charAt(0);
+                startSync();
+            }
+        });
+
+        function startSync() {
+            if (!currentUser) return;
+            // RULE 1 Path
+            const moviesRef = collection(db, 'artifacts', appId, 'public', 'data', 'movies');
+            onSnapshot(moviesRef, (snapshot) => {
+                movies = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderMovies();
+            }, (err) => console.error("Sync error", err));
+        }
+
+        // Rendering Logic
+        window.renderMovies = function() {
+            const grid = document.getElementById('movies-grid');
+            const adminList = document.getElementById('admin-movies-list');
+            
+            grid.innerHTML = movies.length ? '' : '<div class="col-span-full opacity-20 text-center py-20 uppercase font-black tracking-widest">Library Empty</div>';
+            adminList.innerHTML = '';
+
+            movies.forEach(movie => {
+                // Home Card
+                const card = document.createElement('div');
+                card.className = 'group cursor-pointer';
+                card.onclick = () => openPlayer(movie);
+                card.innerHTML = `
+                    <div class="aspect-[2/3] rounded-xl overflow-hidden mb-3 relative bg-[#181818] border border-white/5 shadow-xl transition-all duration-300 group-hover:scale-105 group-hover:border-red-600/50">
+                        <img src="${movie.thumbnail || 'https://placehold.co/400x600/181818/red?text=No+Poster'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <div class="p-4 bg-red-600 rounded-full shadow-2xl scale-75 group-hover:scale-100 transition-transform"><i class="fa-solid fa-play text-2xl"></i></div>
+                        </div>
+                    </div>
+                    <p class="font-bold text-sm uppercase truncate italic text-white group-hover:text-red-500 transition-colors">${movie.title}</p>
+                    <p class="text-[10px] text-gray-500 font-black">${movie.genre || 'Show'}</p>
+                `;
+                grid.appendChild(card);
+
+                // Admin Item
+                const item = document.createElement('div');
+                item.className = 'bg-[#181818] p-4 rounded-2xl flex items-center gap-4 border border-white/5';
+                item.innerHTML = `
+                    <img src="${movie.thumbnail}" class="w-12 h-16 object-cover rounded-lg shadow-lg">
+                    <div class="flex-1">
+                        <p class="font-bold uppercase italic text-white truncate text-sm">${movie.title}</p>
+                        <p class="text-[10px] text-gray-500 font-black uppercase">${movie.genre}</p>
+                    </div>
+                    <button onclick="deleteMovie('${movie.id}')" class="p-3 text-gray-500 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                adminList.appendChild(item);
+            });
+        };
+
+        // Actions
+        window.handleLogin = () => signInAnonymously(auth);
+        window.handleLogout = () => signOut(auth);
+
+        window.submitMovie = async () => {
+            const title = document.getElementById('form-title').value;
+            const description = document.getElementById('form-desc').value;
+            const thumbnail = document.getElementById('form-thumb').value;
+            const videoUrl = document.getElementById('form-video').value;
+
+            if (!title) return;
+            
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'movies'), {
+                title, description, thumbnail, videoUrl,
+                genre: "Action",
+                createdAt: Date.now()
+            });
+
+            // Clear form
+            ['form-title', 'form-desc', 'form-thumb', 'form-video'].forEach(id => document.getElementById(id).value = '');
+            showView('home');
+        };
+
+        window.deleteMovie = async (id) => {
+            if (confirm('Permanently delete this show?')) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'movies', id));
+            }
+        };
+
+        // Navigation & UI
+        window.showView = (v) => {
+            document.getElementById('view-home').classList.toggle('hidden', v !== 'home');
+            document.getElementById('view-admin').classList.toggle('hidden', v !== 'admin');
+        };
+
+        window.tryAdminAccess = () => {
+            if (isAdminAuthenticated) {
+                showView('admin');
+            } else {
+                document.getElementById('auth-modal').classList.remove('hidden');
+            }
+        };
+
+        window.closeAuthModal = () => document.getElementById('auth-modal').classList.add('hidden');
+
+        window.verifyAdminPass = () => {
+            const input = document.getElementById('admin-pass-input');
+            if (input.value === ADMIN_PASS) {
+                isAdminAuthenticated = true;
+                closeAuthModal();
+                showView('admin');
+            } else {
+                input.classList.add('animate-shake', 'border-red-600');
+                input.value = '';
+                setTimeout(() => input.classList.remove('animate-shake'), 400);
+            }
+        };
+
+        window.openPlayer = (movie) => {
+            activeMovie = movie;
+            document.getElementById('player-modal').classList.remove('hidden');
+            document.getElementById('main-video').src = movie.videoUrl;
+            document.getElementById('player-title').innerText = movie.title;
+            document.getElementById('player-desc').innerText = movie.description;
+            document.getElementById('narration-box').classList.add('hidden');
+            document.getElementById('main-video').play();
+        };
+
+        window.closePlayer = () => {
+            document.getElementById('player-modal').classList.add('hidden');
+            document.getElementById('main-video').pause();
+            document.getElementById('main-video').src = '';
+        };
+
+        // Gemini AI Functions
+        window.callGeminiWithRetry = async (prompt, system = "", retries = 5) => {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            systemInstruction: { parts: [{ text: system }] }
+                        })
+                    });
+                    if (!res.ok) throw new Error('API request failed');
+                    const data = await res.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text;
+                } catch (e) {
+                    if (i === retries) throw e;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        };
+
+        window.handleAiFill = async () => {
+            const title = document.getElementById('form-title').value;
+            if (!title) return;
+            const btn = document.getElementById('ai-fill-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Brainstorming...';
+            
+            try {
+                const info = await callGeminiWithRetry(`Movie metadata for "${title}". JSON ONLY: {"description": "...", "genre": "..."}`);
+                if (info) {
+                    const parsed = JSON.parse(info.replace(/```json|```/g, '').trim());
+                    document.getElementById('form-desc').value = parsed.description;
+                }
+            } catch(e) {
+                console.error("AI Error", e);
+            }
+            btn.innerHTML = '<i class="fa-solid fa-sparkles"></i> AI Refined';
+        };
+
+        window.handleAiNarrator = async () => {
+            if (!activeMovie) return;
+            const box = document.getElementById('narration-box');
+            const icon = document.getElementById('narrator-icon');
+            
+            box.classList.remove('hidden');
+            box.innerText = "The Director is typing...";
+            icon.classList.add('animate-spin');
+
+            try {
+                const text = await callGeminiWithRetry(`Narrate this movie dramatically: ${activeMovie.title}. Plot: ${activeMovie.description}`, "Cinematic narrator.");
+                box.innerText = `"${text || 'An epic journey awaits...'}"`;
+            } catch(e) {
+                box.innerText = "Error connecting to AI narrator.";
+            }
+            icon.classList.remove('animate-spin');
+        };
+
+        initAuth();
+    </script>
+</body>
+</html>
